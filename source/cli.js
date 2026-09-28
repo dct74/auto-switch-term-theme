@@ -11,6 +11,7 @@ program
 
 program
 	.addCommand(commands.config)
+	.addCommand(commands.sync)
 	.addCommand(commands.update)
 	.addCommand(commands.watch);
 

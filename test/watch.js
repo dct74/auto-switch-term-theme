@@ -7,41 +7,57 @@ async function setup(t) {
 	const darkMode = {watch: t.mock.fn()};
 	t.mock.module('dark-mode', {exports: {default: darkMode}});
 
-	const macTerminal = {setTerminalProfile: t.mock.fn()};
-	t.mock.module('mac-terminal', {exports: macTerminal});
-
-	const config = {get: t.mock.fn(() => 'Profile')};
-	const library = {
-		getConfig: t.mock.fn(async () => config),
-		getCurrentMode: t.mock.fn(),
+	const consola = {
+		error: t.mock.fn(),
+		info: t.mock.fn(),
+		warn: t.mock.fn(),
 	};
-	t.mock.module('#library', {exports: library});
+	t.mock.module('consola', {exports: {consola}});
 
-	// https://github.com/nodejs/node/issues/59163
-	const {default: update} = await import(`../source/cli/actions/update.js?test=${t.name}`);
-	t.mock.module('../source/cli/actions/update.js', {exports: {default: update}});
+	const sync = t.mock.fn(async () => true);
+	t.mock.module('../source/cli/actions/sync.js', {exports: {default: sync}});
 
 	// https://github.com/nodejs/node/issues/59163
 	const {default: watch} = await import(`../source/cli/actions/watch.js?test=${t.name}`);
 
 	return {
-		watch, darkMode, config, macTerminal,
+		watch,
+		darkMode,
+		sync,
+		consola,
 	};
 }
 
 suite('watch', () => {
+	test('syncs immediately at startup', async t => {
+		const {watch, sync} = await setup(t);
+
+		const timer = await watch();
+		t.after(() => {
+			clearInterval(timer);
+		});
+
+		t.assert.deepStrictEqual(sync.mock.calls[0].arguments[0], {force: true});
+	});
+
 	test('watches for appearance changes', async t => {
 		const {watch, darkMode} = await setup(t);
 
-		await watch();
+		const timer = await watch();
+		t.after(() => {
+			clearInterval(timer);
+		});
 
 		t.assert.strictEqual(darkMode.watch.mock.callCount(), 1);
 	});
 
-	test('updates the terminal profile when dark mode is enabled', async t => {
-		const {watch, darkMode, macTerminal} = await setup(t);
+	test('syncs when dark mode is enabled', async t => {
+		const {watch, darkMode, sync} = await setup(t);
 
-		await watch();
+		const timer = await watch();
+		t.after(() => {
+			clearInterval(timer);
+		});
 
 		const [onModeChange] = darkMode.watch.mock.calls[0].arguments;
 		onModeChange(true);
@@ -50,18 +66,18 @@ suite('watch', () => {
 		});
 
 		t.assert.deepStrictEqual(
-			macTerminal.setTerminalProfile.mock.calls[0].arguments[0],
-			{
-				profile: 'Profile',
-				setDefault: true,
-			},
+			sync.mock.calls.at(-1).arguments[0],
+			{force: true, mode: 'dark'},
 		);
 	});
 
-	test('updates the terminal profile when dark mode is disabled', async t => {
-		const {watch, darkMode, config} = await setup(t);
+	test('syncs when dark mode is disabled', async t => {
+		const {watch, darkMode, sync} = await setup(t);
 
-		await watch();
+		const timer = await watch();
+		t.after(() => {
+			clearInterval(timer);
+		});
 
 		const [onModeChange] = darkMode.watch.mock.calls[0].arguments;
 		onModeChange(false);
@@ -69,6 +85,45 @@ suite('watch', () => {
 			setImmediate(resolve);
 		});
 
-		t.assert.strictEqual(config.get.mock.calls[0].arguments[0], 'profiles.light');
+		t.assert.deepStrictEqual(
+			sync.mock.calls.at(-1).arguments[0],
+			{force: true, mode: 'light'},
+		);
+	});
+
+	test('reconciles periodically as a safety net', async t => {
+		t.mock.timers.enable({apis: ['setInterval']});
+
+		const {watch, sync} = await setup(t);
+
+		const timer = await watch();
+		t.after(() => {
+			clearInterval(timer);
+		});
+
+		const before = sync.mock.callCount();
+		t.mock.timers.tick(60_000);
+		await new Promise(resolve => {
+			setImmediate(resolve);
+		});
+
+		t.assert.ok(sync.mock.callCount() > before);
+		// The periodic reconcile is not forced, so it only acts on real drift.
+		t.assert.strictEqual(sync.mock.calls.at(-1).arguments[0], undefined);
+	});
+
+	test('keeps running when the live watcher cannot start', async t => {
+		const {watch, darkMode, consola} = await setup(t);
+
+		darkMode.watch.mock.mockImplementation(() => {
+			throw new Error('osascript unavailable');
+		});
+
+		const timer = await watch();
+		t.after(() => {
+			clearInterval(timer);
+		});
+
+		t.assert.match(consola.warn.mock.calls[0].arguments[0], /osascript unavailable/v);
 	});
 });

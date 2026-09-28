@@ -1,30 +1,24 @@
 {
-  "name": "auto-terminal-profile",
-  "version": "8.1.0",
-  "description": "Automatically switch macOS Terminal profile when system dark / light mode changes",
+  "name": "auto-switch-term-theme",
+  "version": "1.0.0",
+  "description": "Automatically switch the macOS Terminal profile when the system dark / light appearance changes",
   "license": "MIT",
-  "repository": "github:patrik-csak/auto-terminal-profile",
+  "repository": "github:dct74/auto-switch-term-theme",
+  "homepage": "https://github.com/dct74/auto-switch-term-theme",
   "author": "Patrik Csak <p@trikcsak.com> (https://patrikcsak.com)",
+  "contributors": [
+    "dct74 (https://github.com/dct74)"
+  ],
   "type": "module",
   "imports": {
     "#*": "./source/*/index.js",
     "#package-json": "./package.json"
   },
   "bin": {
-    "auto-terminal-profile": "./source/cli.js"
+    "auto-switch-term-theme": "./source/cli.js"
   },
   "engines": {
-    "node": ">=22 <=24"
-  },
-  "devEngines": {
-    "runtime": {
-      "name": "node",
-      "version": "22"
-    },
-    "packageManager": {
-      "name": "npm",
-      "version": "11.16 - 12"
-    }
+    "node": ">=22"
   },
   "os": [
     "darwin"
@@ -42,7 +36,8 @@
     "terminal",
     "light mode",
     "dark mode",
-    "profile"
+    "profile",
+    "appearance"
   ],
   "dependencies": {
     "commander": "^15.0.0",
