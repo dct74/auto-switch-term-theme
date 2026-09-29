@@ -132,6 +132,18 @@ background service change.
 	profile. If you changed a tab's profile by hand, the next real appearance change
 	(or `auto-switch-term-theme sync --force`) will set it back.
 
+## Development
+
+```shell
+npm install
+npm test
+npm run lint
+```
+
+Releases are automated end to end (bump, tag, push, GitHub Release, Homebrew tap):
+see [`RELEASING.md`](./RELEASING.md). In short, add a changelog entry and run
+`make release VERSION=x.y.z`.
+
 ## License & acknowledgements
 
 MIT. See [`license.txt`](./license.txt).
